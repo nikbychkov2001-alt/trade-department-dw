@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>🎲 Настольные игры — Клубная коллекция</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f7f6; }
+        h1 { color: #333; }
+        .controls { margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        button { padding: 10px 18px; margin-right: 10px; cursor: pointer; border: none; border-radius: 4px; background: #007bff; color: #fff; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        input { padding: 9px; width: 100px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px; }
+        label { margin-right: 5px; font-weight: bold; color: #555; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #e9ecef; }
+        .section { margin-top: 25px; }
+    </style>
+</head>
+<body>
+
+    <h1>🎲 Настольная коллекция клуба</h1>
+
+    <div class="controls">
+        <div style="margin-bottom: 12px;">
+            <button id="fetchBtn" onclick="fetchGames()">📋 Показать коллекцию клуба из БД</button>
+        </div>
+        <div>
+            <label for="playersInput">Игроков:</label>
+            <input type="number" id="playersInput" value="4" min="1" max="20">
+            
+            <label for="timeInput">Макс. время (мин):</label>
+            <input type="number" id="timeInput" value="60" min="5" max="600" step="5">
+
+            <button id="searchBtn" onclick="searchGames()">🔍 Найти игры через Web-servise</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3 id="tableTitle">Каталог игр</h3>
+        <table id="gamesTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Игроки</th>
+                    <th>Время (мин)</th>
+                    <th>Жанр</th>
+                    <th>Добавлено</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/api';
+
+        async function fetchGames() {
+            const btn = document.getElementById('fetchBtn');
+            const originalText = btn.innerText;
+
+            try {
+                btn.innerText = '⏳ Загрузка...';
+                btn.disabled = true;
+
+                const res = await fetch(`${API_URL}/games`);
+                if (!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
+
+                const data = await res.json();
+                document.getElementById('tableTitle').innerText = '📋 Полная коллекция клуба из базы данных';
+                renderTable(data);
+            } catch (err) {
+                alert('Не удалось загрузить коллекцию из БД: ' + err.message);
+                console.error(err);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function searchGames() {
+            const players = document.getElementById('playersInput').value;
+            const time = document.getElementById('timeInput').value;
+            const btn = document.getElementById('searchBtn');
+            const originalText = btn.innerText;
+
+            if (!players || !time) return alert('Введите число игроков и время партии!');
+
+            try {
+                btn.innerText = '⏳ Поиск...';
+                btn.disabled = true;
+
+                const res = await fetch(`${API_URL}/search?players=${players}&time=${time}`);
+                if (!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
+
+                const data = await res.json();
+                document.getElementById('tableTitle').innerText = `🔍 Результаты поиска (Игроков: ${players}, Время до: ${time} мин)`;
+                renderTable(data.matches);
+            } catch (err) {
+                alert('Не удалось выполнить поиск: ' + err.message);
+                console.error(err);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderTable(games) {
+            const tbody = document.querySelector('#gamesTable tbody');
+            tbody.innerHTML = '';
+
+            if (!games || games.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Игры не найдены</td></tr>';
+                return;
+            }
+
+            games.forEach((game, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${game.id || (index + 1)}</td>
+                    <td><strong>${game.title}</strong></td>
+                    <td>👤 ${game.min_players} – ${game.max_players}</td>
+                    <td>⏱️ ${game.duration_minutes} мин</td>
+                    <td>🏷️ ${game.genre}</td>
+                    <td>${game.added_at || 'Внешний каталог'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        fetchGames();
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: games_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gamesdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gamesdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web-service:
+    build: ./web-service
+    container_name: games_web_service
+    environment:
+      - PORT=5001
+
+  backend:
+    build: ./backend
+    container_name: games_backend
+    environment:
+      - DB_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-gamesdb}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - WEB_SERVICE_URL=http://web-service:5001
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      web-service:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    container_name: games_frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend

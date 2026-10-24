@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Визуализация схемы БД — Система учета работы торгового отдела (Вариант 13)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        h2 {
+            border-bottom: 2px solid #27ae60;
+            padding-bottom: 8px;
+            margin-top: 40px;
+            color: #27ae60;
+        }
+        .diagram-container {
+            text-align: center;
+            margin: 20px 0;
+            background: #ffffff;
+            padding: 15px;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 25px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #27ae60;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Система учета работы торгового отдела</h1>
+        <div class="badge">Вариант 13</div>
+        <p>Лабораторные работы по дисциплине «Хранилища данных» | Московский Политех</p>
+    </header>
+
+    <h2>1. Реляционная модель (3-я нормальная форма — 3NF)</h2>
+    <p>Ниже представлена визуальная ER-диаграмма реляционной схемы базы данных торгового отдела:</p>
+    
+    <div class="diagram-container">
+        <pre class="mermaid">
+erDiagram
+    customer {
+        int customer_id PK
+        string full_name
+        string phone UK
+        string email UK
+        text address
+    }
+    product {
+        int product_id PK
+        string name
+        string category
+        numeric price
+        int stock_quantity
+    }
+    employee {
+        int employee_id PK
+        string full_name
+        string phone UK
+        string position
+    }
+    orders {
+        int order_id PK
+        timestamp order_date
+        string status
+        int customer_id FK
+        int employee_id FK
+        numeric total_amount
+    }
+    order_item {
+        int order_id PK, FK
+        int product_id PK, FK
+        int quantity
+        numeric unit_price
+        numeric subtotal
+    }
+
+    customer ||--o{ orders : "оформляет"
+    employee ||--o{ orders : "обрабатывает"
+    orders ||--|{ order_item : "содержит"
+    product ||--o{ order_item : "включает"
+        </pre>
+    </div>
+
+    <h3>Спецификация таблиц 3NF:</h3>
+    <table>
+        <tr>
+            <th>Таблица</th>
+            <th>Назначение</th>
+            <th>Основные атрибуты</th>
+        </tr>
+        <tr>
+            <td><code>customer</code></td>
+            <td>Клиенты (покупатели)</td>
+            <td>customer_id, full_name, phone, email, address</td>
+        </tr>
+        <tr>
+            <td><code>product</code></td>
+            <td>Товары торгового отдела</td>
+            <td>product_id, name, category, price, stock_quantity</td>
+        </tr>
+        <tr>
+            <td><code>employee</code></td>
+            <td>Сотрудники (менеджеры)</td>
+            <td>employee_id, full_name, phone, position</td>
+        </tr>
+        <tr>
+            <td><code>orders</code></td>
+            <td>Заказы клиентов</td>
+            <td>order_id, order_date, status, customer_id, employee_id, total_amount</td>
+        </tr>
+        <tr>
+            <td><code>order_item</code></td>
+            <td>Позиции заказа (товары в заказе)</td>
+            <td>order_id, product_id, quantity, unit_price, subtotal</td>
+        </tr>
+    </table>
+
+    <h2>2. Модель Data Vault 2.0 (Хранилище данных)</h2>
+    <p>Архитектура хранилища сырых данных, разделенная на Хабы, Ссылки и Сателлиты:</p>
+
+    <div class="diagram-container">
+        <pre class="mermaid">
+erDiagram
+    hub_customer {
+        uuid customer_hkey PK
+        string customer_bk UK
+        timestamp load_date
+        string record_source
+    }
+    sat_customer {
+        uuid customer_hkey PK, FK
+        string full_name
+        string email
+        text address
+        timestamp load_date PK
+        string record_source
+    }
+    hub_product {
+        uuid product_hkey PK
+        string product_bk UK
+        timestamp load_date
+        string record_source
+    }
+    sat_product {
+        uuid product_hkey PK, FK
+        string name
+        string category
+        numeric price
+        int stock_quantity
+        timestamp load_date PK
+        string record_source
+    }
+    hub_employee {
+        uuid employee_hkey PK
+        string employee_bk UK
+        timestamp load_date
+        string record_source
+    }
+    sat_employee {
+        uuid employee_hkey PK, FK
+        string full_name
+        string position
+        timestamp load_date PK
+        string record_source
+    }
+    hub_order {
+        uuid order_hkey PK
+        string order_bk UK
+        timestamp load_date
+        string record_source
+    }
+    sat_order {
+        uuid order_hkey PK, FK
+        timestamp order_date
+        string status
+        numeric total_amount
+        timestamp load_date PK
+        string record_source
+    }
+    link_order_customer {
+        uuid link_order_customer_hkey PK
+        uuid order_hkey FK
+        uuid customer_hkey FK
+        timestamp load_date
+        string record_source
+    }
+    link_order_product {
+        uuid link_order_product_hkey PK
+        uuid order_hkey FK
+        uuid product_hkey FK
+        timestamp load_date
+        string record_source
+    }
+    sat_order_item {
+        uuid link_order_product_hkey PK, FK
+        int quantity
+        numeric unit_price
+        numeric subtotal
+        timestamp load_date PK
+        string record_source
+    }
+
+    hub_customer ||--o{ sat_customer : "sat"
+    hub_product ||--o{ sat_product : "sat"
+    hub_employee ||--o{ sat_employee : "sat"
+    hub_order ||--o{ sat_order : "sat"
+    hub_order ||--o{ link_order_customer : "link"
+    hub_customer ||--o{ link_order_customer : "link"
+    hub_order ||--o{ link_order_product : "link"
+    hub_product ||--o{ link_order_product : "link"
+    link_order_product ||--o{ sat_order_item : "sat"
+        </pre>
+    </div>
+</div>
+
+<script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+</script>
+</body>
+</html>

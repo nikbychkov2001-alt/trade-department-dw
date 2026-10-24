@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: trade_department_postgres
+    environment:
+      POSTGRES_DB: trade_department_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+  web:
+    image: python:3.10-slim
+    container_name: trade_department_web
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: python -m http.server 8000
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
